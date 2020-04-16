@@ -1,0 +1,30 @@
+name: CI
+on: [push]
+env:
+  CI: 'true'
+jobs:
+  tests:
+    strategy:
+      matrix:
+        java: [1.8,8]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    name: ci tests java-${{ matrix.java }}
+    steps:
+    - uses: actions/checkout@v1
+    - uses: docker-practice/actions-setup-docker@master
+    - uses: actions/cache@v1
+      with:
+        path: ~/.docker
+        key: ${{ runner.os }}-docker-${{ hashFiles('**/Dockerfile') }}
+        restore-keys: |
+          ${{ runner.os }}-docker-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: ${{ matrix.java }}
+    - run: cd $GITHUB_WORKSPACE && docker-compose build
+    - run: cd $GITHUB_WORKSPACE && docker-compose up -d
+    - run: |
+        ( cd $GITHUB_WORKSPACE && docker-compose logs -f -t & ) || echo oops..
+        sleep 1m
+        cd $GITHUB_WORKSPACE && docker-compose down -v
